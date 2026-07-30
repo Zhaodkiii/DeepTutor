@@ -2763,5 +2763,13 @@
   "codex.oauth.expired": "Codex 登录已超时，请重新开始。",
   "codex.oauth.denied": "Codex 授权被拒绝。",
   "codex.oauth.requestFailed": "Codex 请求失败，请重试。",
-  "codex.oauth.modelCount": "模型：{{count}}"
+  "codex.oauth.modelCount": "模型：{{count}}",
+  "Mobile Agents": "智能体",
+  "Mobile Co-Writer": "写作",
+  "Mobile Space": "学习",
+  "Mobile primary navigation": "移动端主导航",
+  "Mobile control panel": "移动端控制面板",
+  "Open control panel": "打开控制面板",
+  "Close control panel": "关闭控制面板",
+  "Locked — contact your administrator to get access.": "请联系管理员开通访问权限。"
 }

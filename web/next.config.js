@@ -108,10 +108,12 @@ const nextConfig = {
 
   // Next.js 16 blocks cross-origin access to /_next/* dev resources (HMR
   // WebSocket, fonts, dev-only scripts) unless the request host is on this
-  // allow-list. Without it, browsing http://127.0.0.1:<port>/ against a dev
-  // server bound to localhost silently breaks client hydration — the SSR HTML
-  // renders, but no React event handlers or effects ever attach.
-  allowedDevOrigins: ["127.0.0.1"],
+  // allow-list. Phone testing uses the Mac's LAN IP rather than 127.0.0.1, so
+  // allow dotted IPv4 hosts and multi-part hostnames in development.
+  //
+  // Next's matcher intentionally rejects bare "*" / "**" patterns, so use
+  // segment-aware patterns instead.
+  allowedDevOrigins: ["*.*.*.*", "**.*"],
 
   // Turbopack configuration (used when running `npm run dev:turbo`)
   turbopack: {

@@ -23,5 +23,10 @@ export default defineConfig({
       testMatch: "**/*.audit.ts",
       use: { ...devices["Desktop Chrome"] },
     },
+    {
+      name: "mobile-nav",
+      testMatch: "**/mobile-navigation.spec.ts",
+      use: { ...devices["iPhone 13"] },
+    },
   ],
 });

@@ -1787,7 +1787,7 @@ export default function ChatPage() {
           data-viewer-open={viewerPanelOpen ? "true" : "false"}
           className="chat-preview-shell flex h-full flex-col overflow-hidden bg-[var(--background)]"
         >
-          <div className="mx-auto flex w-full max-w-[960px] flex-wrap items-center justify-between gap-x-3 gap-y-1.5 px-6 pt-3 pb-0">
+          <div className="mx-auto flex w-full max-w-[960px] flex-wrap items-center justify-between gap-x-3 gap-y-1.5 px-4 pt-14 pr-14 pb-0 md:px-6 md:pt-3 md:pr-6">
             <div className="group/title min-w-0 flex flex-1 items-center gap-2">
               {sessionTitleEditing ? (
                 <input
