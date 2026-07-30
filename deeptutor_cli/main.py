@@ -125,6 +125,26 @@ def start(
 
 
 @app.command()
+def stop(
+    home: Path | None = typer.Option(None, "--home", help="Runtime workspace root."),
+) -> None:
+    """Stop backend + frontend processes on the configured ports."""
+    from deeptutor.runtime.launcher import stop as stop_web
+
+    stop_web(home=home)
+
+
+@app.command()
+def restart(
+    home: Path | None = typer.Option(None, "--home", help="Runtime workspace root."),
+) -> None:
+    """Stop backend + frontend on configured ports, then start them again."""
+    from deeptutor.runtime.launcher import restart as restart_web
+
+    restart_web(home=home)
+
+
+@app.command()
 def serve(
     host: str = typer.Option("0.0.0.0", help="Bind address."),
     port: int | None = typer.Option(None, help="Port number."),

@@ -187,6 +187,39 @@ def test_resolve_port_conflicts_change_option_prompts_and_persists(
     assert saved == {"backend": 8002, "frontend": 3785}
 
 
+def test_stop_uses_configured_ports(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    home = tmp_path / "home"
+    settings = home / "data" / "user" / "settings"
+    settings.mkdir(parents=True)
+    (settings / "system.json").write_text(
+        '{"backend_port": 9101, "frontend_port": 4101}',
+        encoding="utf-8",
+    )
+    (settings / "interface.json").write_text('{"language": "en"}', encoding="utf-8")
+
+    occupied = {9101, 4101}
+    killed: list[int] = []
+
+    def fake_kill(pid, pgid, sig):
+        killed.append(pid)
+        if pid == 19101:
+            occupied.discard(9101)
+        if pid == 14101:
+            occupied.discard(4101)
+
+    monkeypatch.setattr(launcher, "_port_accepts_connection", lambda port: port in occupied)
+    monkeypatch.setattr(
+        launcher,
+        "_port_listeners",
+        lambda port: [(19101 if port == 9101 else 14101, f"listener:{port}")],
+    )
+    monkeypatch.setattr(launcher, "_send_tree_signal", fake_kill)
+
+    launcher.stop(home=home)
+
+    assert killed == [19101, 14101]
+
+
 class _RecordingStream:
     """Stand-in for a console stream that records ``reconfigure`` calls."""
 

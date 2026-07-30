@@ -235,3 +235,32 @@ def test_start_command_delegates_to_runtime_launcher(monkeypatch) -> None:
 
     assert result.exit_code == 0, result.output
     assert calls == [None]
+
+
+def test_stop_command_delegates_to_runtime_launcher(monkeypatch) -> None:
+    calls: list[object] = []
+
+    def _fake_stop(home=None):  # noqa: ANN001
+        calls.append(home)
+
+    monkeypatch.setattr("deeptutor.runtime.launcher.stop", _fake_stop)
+
+    result = runner.invoke(app, ["stop"])
+
+    assert result.exit_code == 0, result.output
+    assert calls == [None]
+
+
+def test_restart_command_delegates_to_runtime_launcher(monkeypatch) -> None:
+    calls: list[object] = []
+
+    def _fake_restart(home=None):  # noqa: ANN001
+        calls.append(home)
+
+    monkeypatch.setattr("deeptutor.runtime.launcher.restart", _fake_restart)
+
+    result = runner.invoke(app, ["restart"])
+
+    assert result.exit_code == 0, result.output
+    assert calls == [None]
+

@@ -360,7 +360,8 @@ def _prompt_new_ports(
     return new_backend, new_frontend
 
 
-def _kill_port_listeners(listeners: dict[int, list[tuple[int, str]]]) -> None:
+def _kill_port_listeners(listeners: dict[int, list[tuple[int, str]]]) -> set[int]:
+    failed: set[int] = set()
     for port, entries in listeners.items():
         for pid, command in entries:
             _log(_t("start.port_killing", pid=pid, command=command))
@@ -383,8 +384,10 @@ def _kill_port_listeners(listeners: dict[int, list[tuple[int, str]]]) -> None:
         if _port_accepts_connection(port):
             pids = ", ".join(str(pid) for pid, _command in entries) or "?"
             _log(_t("start.port_kill_failed", port=port, pid=pids))
+            failed.add(port)
         else:
             _log(_t("start.port_freed", port=port))
+    return failed
 
 
 def _resolve_port_conflicts(
@@ -976,4 +979,61 @@ def start(home: str | Path | None = None) -> None:
         raise SystemExit(exit_code)
 
 
-__all__ = ["start"]
+def stop(home: str | Path | None = None) -> None:
+    """Stop processes listening on the configured backend and frontend ports."""
+
+    _relax_console_encoding()
+    runtime_home = get_runtime_home(home)
+    runtime_home.mkdir(parents=True, exist_ok=True)
+    os.environ[DEEPTUTOR_HOME_ENV] = str(runtime_home)
+    _reset_runtime_singletons()
+
+    from deeptutor.services.config import ensure_runtime_settings_files, load_launch_settings
+    from deeptutor.services.setup import init_user_directories
+
+    init_user_directories(runtime_home)
+    ensure_runtime_settings_files()
+    settings = load_launch_settings(runtime_home)
+
+    global _ACTIVE_LABELS
+    language = resolve_language()
+    _ACTIVE_LABELS = labels_for(language)
+
+    roles = [
+        (_t("start.backend"), settings.backend_port),
+        (_t("start.frontend"), settings.frontend_port),
+    ]
+    _log(_t("stop.checking", workspace=runtime_home))
+    for name, port in roles:
+        _log(_t("stop.port", name=name, port=port))
+
+    occupied = [(name, port) for name, port in roles if _port_accepts_connection(port)]
+    if not occupied:
+        _log(_t("stop.nothing"))
+        return
+
+    listeners: dict[int, list[tuple[int, str]]] = {}
+    for name, port in occupied:
+        entries = _port_listeners(port)
+        listeners[port] = entries
+        _log(_t("start.port_conflict_line", role=name, port=port))
+        if entries:
+            for pid, command in entries:
+                _log(_t("start.port_conflict_proc", pid=pid, command=command))
+        else:
+            _log(_t("start.port_conflict_unknown_proc"))
+
+    failed = _kill_port_listeners(listeners)
+    if failed:
+        raise SystemExit(1)
+    _log(_t("stop.done"))
+
+
+def restart(home: str | Path | None = None) -> None:
+    """Stop configured DeepTutor ports, then launch backend + frontend."""
+
+    stop(home=home)
+    start(home=home)
+
+
+__all__ = ["restart", "start", "stop"]

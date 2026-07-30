@@ -128,6 +128,10 @@ LABELS: dict[str, dict[str, str]] = {
         "start.port_killing": "Stopping PID {pid} ({command}) ...",
         "start.port_kill_failed": "Could not free port {port} (PID {pid}).",
         "start.port_freed": "Port {port} released.",
+        "stop.checking": "Checking configured DeepTutor ports for {workspace}",
+        "stop.port": "{name:<10} port {port}",
+        "stop.nothing": "No process is listening on the configured DeepTutor ports.",
+        "stop.done": "DeepTutor stopped.",
     },
     "zh": {
         "tagline": "智能体原生的个性化辅导",
@@ -232,6 +236,10 @@ LABELS: dict[str, dict[str, str]] = {
         "start.port_killing": "正在停止 PID {pid} ({command}) ...",
         "start.port_kill_failed": "无法释放端口 {port} (PID {pid})。",
         "start.port_freed": "端口 {port} 已释放。",
+        "stop.checking": "正在检查工作目录 {workspace} 的 DeepTutor 配置端口",
+        "stop.port": "{name:<10}端口 {port}",
+        "stop.nothing": "当前配置端口上没有正在监听的 DeepTutor 进程。",
+        "stop.done": "DeepTutor 已停止。",
     },
 }
 
