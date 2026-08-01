@@ -1,5 +1,5 @@
 import UtilitySidebar from "@/components/sidebar/UtilitySidebar";
-import ResponsiveAppShell from "@/components/layout/ResponsiveAppShell";
+import AppShell from "@/components/layout/AppShell";
 import { CapabilityAccessProvider } from "@/components/access/CapabilityAccessContext";
 import CapabilityGate from "@/components/access/CapabilityGate";
 
@@ -10,9 +10,9 @@ export default function UtilityLayout({
 }>) {
   return (
     <CapabilityAccessProvider>
-      <ResponsiveAppShell desktopSidebar={<UtilitySidebar />}>
+      <AppShell sidebar={<UtilitySidebar />}>
         <CapabilityGate>{children}</CapabilityGate>
-      </ResponsiveAppShell>
+      </AppShell>
     </CapabilityAccessProvider>
   );
 }

@@ -1,5 +1,5 @@
 import WorkspaceSidebar from "@/components/sidebar/WorkspaceSidebar";
-import ResponsiveAppShell from "@/components/layout/ResponsiveAppShell";
+import AppShell from "@/components/layout/AppShell";
 import { CapabilityAccessProvider } from "@/components/access/CapabilityAccessContext";
 import CapabilityGate from "@/components/access/CapabilityGate";
 import { UnifiedChatProvider } from "@/context/UnifiedChatContext";
@@ -12,9 +12,9 @@ export default function WorkspaceLayout({
   return (
     <CapabilityAccessProvider>
       <UnifiedChatProvider>
-        <ResponsiveAppShell desktopSidebar={<WorkspaceSidebar />}>
+        <AppShell sidebar={<WorkspaceSidebar />}>
           <CapabilityGate>{children}</CapabilityGate>
-        </ResponsiveAppShell>
+        </AppShell>
       </UnifiedChatProvider>
     </CapabilityAccessProvider>
   );
