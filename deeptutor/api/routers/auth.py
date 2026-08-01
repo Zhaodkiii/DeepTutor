@@ -49,6 +49,7 @@ from deeptutor.services.auth import (
     set_avatar,
     set_role,
 )
+from deeptutor.services.spark_auth import decode_spark_token, spark_auth_enabled
 from deeptutor.services.codex_auth.contracts import CodexAuthError
 from deeptutor.services.codex_auth.service import deliver_codex_oauth_callback
 
@@ -208,6 +209,37 @@ def _extract_token(authorization: str | None, dt_token: str | None) -> str | Non
     return _bearer_token_from_header(authorization) or dt_token
 
 
+def _resolve_auth_payload(
+    authorization: str | None,
+    dt_token: str | None,
+) -> TokenPayload | None:
+    token = _extract_token(authorization, dt_token)
+    if spark_auth_enabled():
+        spark_payload = decode_spark_token(token)
+        if spark_payload is not None:
+            return spark_payload
+        if token:
+            return None
+        return None
+    if not AUTH_ENABLED:
+        return None
+    if not token:
+        return None
+    return decode_token(token)
+
+
+def _auth_required() -> bool:
+    return AUTH_ENABLED or spark_auth_enabled()
+
+
+def _reject_native_auth_if_spark() -> None:
+    if spark_auth_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="DeepTutor native auth is disabled in SparkService embedded mode",
+        )
+
+
 # ---------------------------------------------------------------------------
 # Dependencies — reusable auth guards for other routers
 # ---------------------------------------------------------------------------
@@ -260,23 +292,15 @@ async def require_auth(
     endpoint to read the unset default. That regression was the root cause
     of #481.
     """
-    if not AUTH_ENABLED:
+    if not _auth_required():
         _install_current_user(None)
         return None
 
-    token = _extract_token(authorization, dt_token)
-    if not token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    payload = decode_token(token)
+    payload = _resolve_auth_payload(authorization, dt_token)
     if not payload:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
+            detail="Not authenticated",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -312,11 +336,13 @@ async def ws_require_auth(ws: WebSocket) -> _CtxToken | _WsAuthFailed:
         finally:
             reset_current_user(user_token)
     """
-    if not AUTH_ENABLED:
+    if not _auth_required():
         return _install_current_user(None)
 
     token = ws.query_params.get("token") or ws.cookies.get(_COOKIE_NAME)
-    payload = decode_token(token) if token else None
+    payload = decode_spark_token(token) if spark_auth_enabled() else None
+    if payload is None and token:
+        payload = decode_token(token) if AUTH_ENABLED else None
     if not payload:
         await ws.close(code=4001)
         return ws_auth_failed
@@ -436,6 +462,7 @@ async def auth_status(
 @router.post("/login")
 async def login(body: LoginRequest, response: Response) -> dict:
     """Validate credentials and set a JWT cookie."""
+    _reject_native_auth_if_spark()
     if not AUTH_ENABLED:
         return {"ok": True, "message": "Auth is disabled — no login required."}
 
@@ -502,6 +529,7 @@ async def register(body: RegisterRequest) -> dict:
 
     Only available when AUTH_ENABLED=true.
     """
+    _reject_native_auth_if_spark()
     if not AUTH_ENABLED:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

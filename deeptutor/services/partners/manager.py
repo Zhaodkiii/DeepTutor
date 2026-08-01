@@ -893,6 +893,14 @@ class PartnerManager:
     # ── Boot / shutdown ───────────────────────────────────────────
 
     async def auto_start_partners(self) -> None:
+        try:
+            from deeptutor.services.embedded_policy import embedded_mode, partner_channels_allowed
+
+            if embedded_mode() and not partner_channels_allowed():
+                logger.info("Partner auto-start skipped by embedded policy")
+                return
+        except Exception:
+            pass
         for pid in self._discover_partner_ids():
             if pid in self._partners and self._partners[pid].running:
                 continue

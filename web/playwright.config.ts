@@ -28,5 +28,10 @@ export default defineConfig({
       testMatch: "**/mobile-navigation.spec.ts",
       use: { ...devices["iPhone 13"] },
     },
+    {
+      name: "mobile-home-layout",
+      testMatch: "**/mobile-home-layout.spec.ts",
+      use: { ...devices["iPhone 13"] },
+    },
   ],
 });

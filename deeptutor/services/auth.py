@@ -239,6 +239,7 @@ def decode_token(token: str) -> TokenPayload | None:
     """
     Validate a token and return a TokenPayload, or None if invalid.
 
+    - Bridge token mode: SparkService-issued short-lived JWT for iOS AI chat.
     - PocketBase mode: calls PocketBase's auth-refresh endpoint (cached in
       memory for 60 s, so only the first request per token per minute makes
       a network call). No static JWT secret required.
@@ -247,6 +248,17 @@ def decode_token(token: str) -> TokenPayload | None:
     """
     if not token:
         return None
+
+    from deeptutor.services.bridge_auth import decode_bridge_token
+    from deeptutor.services.mobile_auth import decode_mobile_access_token
+
+    mobile_payload = decode_mobile_access_token(token)
+    if mobile_payload is not None:
+        return mobile_payload
+
+    bridge_payload = decode_bridge_token(token)
+    if bridge_payload is not None:
+        return bridge_payload
 
     if POCKETBASE_ENABLED:
         from deeptutor.services.pocketbase_client import validate_pb_token

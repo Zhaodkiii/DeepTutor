@@ -29,6 +29,15 @@ from .context import get_current_user
 from .grants import load_grant
 
 
+def _embedded_unrestricted() -> bool:
+    try:
+        from deeptutor.services.embedded_policy import preserve_full_capabilities
+
+        return preserve_full_capabilities()
+    except Exception:
+        return False
+
+
 def _current_grant() -> dict | None:
     """The current user's grant, or ``None`` when unrestricted (admin)."""
     user = get_current_user()
@@ -39,6 +48,8 @@ def _current_grant() -> dict | None:
 
 def allowed_optional_tools() -> set[str] | None:
     """Whitelist of user-toggleable tool names, ``None`` = unrestricted."""
+    if _embedded_unrestricted():
+        return None
     grant = _current_grant()
     if grant is None:
         return None
@@ -56,6 +67,8 @@ def allowed_mcp_tools() -> set[str] | None:
     turn cannot discover or load deployment-wide MCP host tools until an admin
     explicitly grants the tool names.
     """
+    if _embedded_unrestricted():
+        return None
     grant = _current_grant()
     if grant is None:
         return None

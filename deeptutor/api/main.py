@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 import logging
+import os
 import sys
 
 from fastapi import Depends, FastAPI, HTTPException
@@ -32,7 +33,19 @@ class _SuppressWsNoise(logging.Filter):
         return not any(f in msg for f in self._SUPPRESSED)
 
 
+class _WebSocketTokenRedactionFilter(logging.Filter):
+    """Redact JWT tokens from uvicorn access logs."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        from deeptutor.logging.formatters import redact_sensitive
+
+        record.msg = redact_sensitive(record.getMessage())
+        record.args = ()
+        return True
+
+
 logging.getLogger("uvicorn.error").addFilter(_SuppressWsNoise())
+logging.getLogger("uvicorn.access").addFilter(_WebSocketTokenRedactionFilter())
 
 CONFIG_DRIFT_ERROR_TEMPLATE = (
     "Configuration Drift Detected: Capability tool references {drift} are not "
@@ -121,6 +134,15 @@ async def lifespan(app: FastAPI):
     """
     # Execute on startup
     logger.info("Application startup")
+
+    try:
+        from deeptutor.services.mobile_auth import log_debug_token_availability
+
+        host = os.getenv("HOST", "0.0.0.0")
+        port = os.getenv("PORT", "8000")
+        log_debug_token_availability(bind=f"{host}:{port}")
+    except Exception as e:
+        logger.warning(f"Failed to log mobile auth debug token availability: {e}")
 
     # Validate configuration consistency
     validate_tool_consistency()
@@ -334,12 +356,14 @@ from deeptutor.api.routers import (
     voice,
 )
 from deeptutor.api.routers import (
+    mobile_auth,
     tools as tools_router,
 )
 from deeptutor.multi_user.router import router as multi_user_router  # noqa: E402
 
 # Auth router is public — login/logout/register/status require no token
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
+app.include_router(mobile_auth.router, prefix="/api/v1/mobile/auth", tags=["mobile-auth"])
 
 # All other routers require a valid session when AUTH_ENABLED=true.
 # require_auth is a no-op when AUTH_ENABLED=false, so this is safe for local use.
@@ -445,6 +469,14 @@ app.include_router(quiz_judge.router, prefix="/api/v1", tags=["quiz-judge"])
 @app.get("/")
 async def root():
     return {"message": "Welcome to DeepTutor API"}
+
+
+def create_app() -> FastAPI:
+    """Factory entry for SparkService embedded ASGI integration."""
+    return app
+
+
+__all__ = ["app", "create_app", "lifespan"]
 
 
 if __name__ == "__main__":

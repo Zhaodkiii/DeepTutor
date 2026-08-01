@@ -529,7 +529,7 @@ function SessionViewerPanelInner(
       style={{
         // Constant string (not a state value) so SSR and the first client
         // render agree; the real width lives in the var, updated imperatively.
-        width: `var(${VIEWER_WIDTH_VAR}, ${VIEWER_WIDTH_DEFAULT}px)`,
+        width: `min(var(${VIEWER_WIDTH_VAR}, ${VIEWER_WIDTH_DEFAULT}px), 92vw)`,
         willChange: "transform",
         transitionDuration: `${ANIM_MS}ms`,
         pointerEvents: visible ? "auto" : "none",

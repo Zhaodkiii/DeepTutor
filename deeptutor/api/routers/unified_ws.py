@@ -105,30 +105,28 @@ async def unified_websocket(ws: WebSocket) -> None:
             try:
                 msg = json.loads(raw)
             except json.JSONDecodeError:
-                await safe_send({"type": "error", "content": "Invalid JSON."})
+                from deeptutor.api.routers.ws_errors import invalid_json_error
+
+                await safe_send(invalid_json_error())
+                continue
+
+            if not isinstance(msg, dict):
+                from deeptutor.api.routers.ws_errors import invalid_json_error
+
+                await safe_send(invalid_json_error())
                 continue
 
             msg_type = msg.get("type")
 
             if msg_type in {"message", "start_turn"}:
+                from deeptutor.api.routers.ws_errors import map_runtime_error
                 from deeptutor.services.session import get_turn_runtime_manager
 
                 runtime = get_turn_runtime_manager()
                 try:
                     _, turn = await runtime.start_turn(msg)
                 except RuntimeError as exc:
-                    await safe_send(
-                        {
-                            "type": "error",
-                            "source": "unified_ws",
-                            "stage": "",
-                            "content": str(exc),
-                            "metadata": {"turn_terminal": True, "status": "rejected"},
-                            "session_id": str(msg.get("session_id") or ""),
-                            "turn_id": "",
-                            "seq": 0,
-                        }
-                    )
+                    await safe_send(map_runtime_error(exc, stage="start_turn", msg=msg))
                     continue
                 await subscribe_turn(turn["id"], after_seq=0)
                 continue
@@ -142,25 +140,31 @@ async def unified_websocket(ws: WebSocket) -> None:
                 continue
 
             if msg_type == "subscribe_turn":
+                from deeptutor.api.routers.ws_errors import missing_turn_id_error
+
                 turn_id = str(msg.get("turn_id") or "").strip()
                 if not turn_id:
-                    await safe_send({"type": "error", "content": "Missing turn_id."})
+                    await safe_send(missing_turn_id_error(msg, stage="subscribe_turn"))
                     continue
                 await subscribe_turn(turn_id, after_seq=int(msg.get("after_seq") or 0))
                 continue
 
             if msg_type == "subscribe_session":
+                from deeptutor.api.routers.ws_errors import missing_session_id_error
+
                 session_id = str(msg.get("session_id") or "").strip()
                 if not session_id:
-                    await safe_send({"type": "error", "content": "Missing session_id."})
+                    await safe_send(missing_session_id_error(msg, stage="subscribe_session"))
                     continue
                 await subscribe_session(session_id, after_seq=int(msg.get("after_seq") or 0))
                 continue
 
             if msg_type == "check_active_turn":
+                from deeptutor.api.routers.ws_errors import missing_session_id_error
+
                 session_id = str(msg.get("session_id") or "").strip()
                 if not session_id:
-                    await safe_send({"type": "error", "content": "Missing session_id."})
+                    await safe_send(missing_session_id_error(msg, stage="check_active_turn"))
                     continue
                 from deeptutor.services.session import get_turn_runtime_manager
 
@@ -193,9 +197,11 @@ async def unified_websocket(ws: WebSocket) -> None:
                 continue
 
             if msg_type == "resume_from":
+                from deeptutor.api.routers.ws_errors import missing_turn_id_error
+
                 turn_id = str(msg.get("turn_id") or "").strip()
                 if not turn_id:
-                    await safe_send({"type": "error", "content": "Missing turn_id."})
+                    await safe_send(missing_turn_id_error(msg, stage="resume_from"))
                     continue
                 await subscribe_turn(turn_id, after_seq=int(msg.get("seq") or 0))
                 continue
@@ -210,22 +216,26 @@ async def unified_websocket(ws: WebSocket) -> None:
                 continue
 
             if msg_type == "cancel_turn":
+                from deeptutor.api.routers.ws_errors import missing_turn_id_error, turn_not_found_error
+
                 turn_id = str(msg.get("turn_id") or "").strip()
                 if not turn_id:
-                    await safe_send({"type": "error", "content": "Missing turn_id."})
+                    await safe_send(missing_turn_id_error(msg, stage="cancel_turn"))
                     continue
                 from deeptutor.services.session import get_turn_runtime_manager
 
                 runtime = get_turn_runtime_manager()
                 cancelled = await runtime.cancel_turn(turn_id)
                 if not cancelled:
-                    await safe_send({"type": "error", "content": f"Turn not found: {turn_id}"})
+                    await safe_send(turn_not_found_error(turn_id, msg, stage="cancel_turn"))
                 continue
 
             if msg_type == "submit_user_reply":
+                from deeptutor.api.routers.ws_errors import build_ws_error, missing_turn_id_error
+
                 turn_id = str(msg.get("turn_id") or "").strip()
                 if not turn_id:
-                    await safe_send({"type": "error", "content": "Missing turn_id."})
+                    await safe_send(missing_turn_id_error(msg, stage="submit_user_reply"))
                     continue
                 # Accept either the legacy ``text`` (single free-form
                 # reply) or the v2 ``answers`` (list of {questionId, text}
@@ -251,17 +261,25 @@ async def unified_websocket(ws: WebSocket) -> None:
                 accepted = await runtime.submit_user_reply(turn_id, text=text_str, answers=answers)
                 if not accepted:
                     await safe_send(
-                        {
-                            "type": "error",
-                            "content": (f"Turn {turn_id} is not awaiting a user reply."),
-                        }
+                        build_ws_error(
+                            content=f"Turn {turn_id} is not awaiting a user reply.",
+                            code="turn_rejected",
+                            reason="not_awaiting_user_reply",
+                            stage="submit_user_reply",
+                            recoverable=False,
+                            turn_id=turn_id,
+                            session_id=str(msg.get("session_id") or ""),
+                            client_message_id=str(msg.get("client_message_id") or ""),
+                        )
                     )
                 continue
 
             if msg_type == "regenerate":
+                from deeptutor.api.routers.ws_errors import map_runtime_error, missing_session_id_error
+
                 session_id = str(msg.get("session_id") or "").strip()
                 if not session_id:
-                    await safe_send({"type": "error", "content": "Missing session_id."})
+                    await safe_send(missing_session_id_error(msg, stage="regenerate"))
                     continue
                 from deeptutor.services.session import get_turn_runtime_manager
 
@@ -273,49 +291,53 @@ async def unified_websocket(ws: WebSocket) -> None:
                         overrides=overrides,
                     )
                 except RuntimeError as exc:
-                    await safe_send(
-                        {
-                            "type": "error",
-                            "source": "unified_ws",
-                            "stage": "",
-                            "content": str(exc),
-                            "metadata": {
-                                "turn_terminal": True,
-                                "status": "rejected",
-                                "reason": str(exc),
-                            },
-                            "session_id": session_id,
-                            "turn_id": "",
-                            "seq": 0,
-                        }
-                    )
+                    await safe_send(map_runtime_error(exc, stage="regenerate", msg=msg))
                     continue
                 await subscribe_turn(turn["id"], after_seq=0)
                 continue
 
             if msg_type == "user_input":
+                from deeptutor.api.routers.ws_errors import build_ws_error, missing_turn_id_error
+
                 turn_id = str(msg.get("turn_id") or "").strip()
                 if not turn_id:
-                    await safe_send({"type": "error", "content": "Missing turn_id for user_input."})
+                    await safe_send(
+                        missing_turn_id_error(
+                            msg,
+                            stage="user_input",
+                            content="Missing turn_id for user_input.",
+                        )
+                    )
                     continue
                 from deeptutor.core.stream_bus import get_bus
 
                 bus = get_bus(turn_id)
                 if bus is None:
                     await safe_send(
-                        {"type": "error", "content": f"No active bus for turn: {turn_id}"}
+                        build_ws_error(
+                            content=f"No active bus for turn: {turn_id}",
+                            code="turn_rejected",
+                            reason="no_active_bus",
+                            stage="user_input",
+                            recoverable=False,
+                            turn_id=turn_id,
+                            client_message_id=str(msg.get("client_message_id") or ""),
+                        )
                     )
                     continue
                 bus.submit_input(str(msg.get("content") or ""))
                 continue
 
-            await safe_send({"type": "error", "content": f"Unknown type: {msg_type}"})
+            from deeptutor.api.routers.ws_errors import unknown_message_type_error
+
+            await safe_send(unknown_message_type_error(msg_type))
 
     except WebSocketDisconnect:
         logger.debug("Client disconnected from /ws")
     except Exception as exc:
-        logger.error("Unified WS error: %s", exc, exc_info=True)
-        await safe_send({"type": "error", "content": str(exc)})
+        from deeptutor.api.routers.ws_errors import internal_error
+
+        await safe_send(internal_error(exc))
     finally:
         closed = True
         for key in list(subscription_tasks.keys()):

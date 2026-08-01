@@ -529,6 +529,11 @@ class AgenticChatPipeline:
 
     async def _exec_allowed(self, context: UnifiedContext) -> bool:
         try:
+            from deeptutor.services.embedded_policy import embedded_mode, exec_tools_allowed
+
+            if embedded_mode() and not exec_tools_allowed():
+                return False
+
             from deeptutor.services.sandbox import IsolationLevel, get_sandbox_service
 
             # A partner turn runs as a synthetic non-admin user but IS the admin

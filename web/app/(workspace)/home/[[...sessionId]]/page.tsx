@@ -1783,11 +1783,12 @@ export default function ChatPage() {
           // the remaining ~30 px would be useless. The actual padding +
           // transition lives in `chat-preview-shell` (globals.css) so we can
           // hand-tune it without fighting Tailwind's arbitrary-value parser.
+          data-home-page-root="true"
           data-preview-open={previewSource ? "true" : "false"}
           data-viewer-open={viewerPanelOpen ? "true" : "false"}
           className="chat-preview-shell flex h-full flex-col overflow-hidden bg-[var(--background)]"
         >
-          <div className="mx-auto flex w-full max-w-[960px] flex-wrap items-center justify-between gap-x-3 gap-y-1.5 px-4 pt-14 pr-14 pb-0 md:px-6 md:pt-3 md:pr-6">
+          <div className="mx-auto flex w-full max-w-[960px] flex-wrap items-center justify-between gap-x-3 gap-y-1.5 px-4 pt-14 pr-16 pb-0 md:px-6 md:pt-3 md:pr-6">
             <div className="group/title min-w-0 flex flex-1 items-center gap-2">
               {sessionTitleEditing ? (
                 <input
@@ -1871,7 +1872,7 @@ export default function ChatPage() {
                     className="h-10 w-10 select-none"
                     draggable={false}
                   />
-                  <h1 className="font-serif text-[40px] font-medium leading-[1.1] tracking-[-0.015em] text-[var(--foreground)]">
+                  <h1 className="font-serif text-[30px] font-medium leading-[1.1] tracking-[-0.015em] text-[var(--foreground)] sm:text-[40px]">
                     {t(welcomeGreeting)}
                   </h1>
                 </div>

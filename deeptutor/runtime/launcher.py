@@ -768,6 +768,9 @@ def _install_signal_handlers(request_shutdown: Callable[[str | None], None]) -> 
 
 
 def start(home: str | Path | None = None) -> None:
+    if os.getenv("DEEPTUTOR_EMBEDDED", "false").lower() in ("1", "true", "yes", "y"):
+        _log("DeepTutor standalone launcher skipped: runtime is embedded in SparkService")
+        return
     _relax_console_encoding()
     runtime_home = get_runtime_home(home)
     runtime_home.mkdir(parents=True, exist_ok=True)
